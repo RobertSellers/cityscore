@@ -52,7 +52,7 @@ try:
     multiplier = {"Low":.5, "Normal":1, "High":1.5, "Critical":2}
     score_df["multiplier"] = score_df["importance"].map(multiplier)
     score_df['prptn_indiv'] = score_df['multiplier']/score_df['multiplier'].sum()
-    score_df['prprtn_indicator'] = score_df.groupby(['multiplier','indicator'])['prptn_indiv'].transform(lambda x: x.sum())
+    score_df['prprtn_indicator'] = score_df.groupby(['dimension','indicator'])['prptn_indiv'].transform(lambda x: x.sum())
     score_df['prprtn_dimension'] = score_df['prprtn_indicator'].groupby(score_df['dimension']).transform(lambda x:  x/x.sum())
     del score_df['dimension_b']
     score_df = score_df[['name','dimension', 'indicator','importance','prptn_indiv','prprtn_indicator','prprtn_dimension','count','multiplier']]
@@ -68,16 +68,13 @@ try:
         with arcpy.da.UpdateCursor(agg_feature,['city',str(row['indicator'])]) as cursor:
             for r in cursor:
                 # gets multiplier from agg master data.  currently need actual city data
-
                 agg_indicator = score_df.loc[score_df['name'] == str(row['name']), 'indicator'].iloc[0]
                 indicator_subset = score_df.loc[score_df['indicator'] == agg_indicator]
-                #mean_weight = indicator_subset["overall"].mean()
                 cum_sum = 0
                 for index, r2 in indicator_subset.iterrows():
                     cur_score = raw_df.loc[raw_df['city'] == r[0], r2['name']].iloc[0]
-                    #a1 = indicator_subset['overall'].sum()
-                    a4 = cur_score * 1
-                    cum_sum += a4
+                    cur_score_product = cur_score * r2['prptn_indiv']
+                    cum_sum += cur_score_product/r2['prprtn_indicator']
                 r[1] = cum_sum
                 cursor.updateRow(r)
 
