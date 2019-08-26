@@ -45,16 +45,12 @@ try:
 
     score_df_counts = score_df.groupby(["dimension", "indicator"]).dimension.agg('count').to_frame('count').reset_index()
     score_df = score_df.set_index('indicator').join(score_df_counts.set_index('indicator'), rsuffix='_b').reset_index()
-    multiplier = {"Low":.5,"Normal":1,"High":1.5,"Critical":2}
+    multiplier = {"Low":.5, "Normal":1, "High":1.5, "Critical":2}
     score_df["multiplier"] = score_df["importance"].map(multiplier)
-    score_df['multiplier_tot'] = score_df['multiplier']/score_df['multiplier'].groupby(score_df['indicator']).transform('sum')
-    indicator_weight = 1 / score_df.shape[0]# to be placed later low,high,normal,critical. see summary tab on goog sheet.
-    score_df['overall'] = score_df.shape[0]#*score_df['multiplier_tot']
-    score_df['overall'] = 1/score_df['overall']#(score_df['multiplier_tot'] / score_df['overall'])*100#this derives from inventory
-    #score_df=score_df.groupby(['indicator'])['overall'].agg('sum').reset_index()
+    score_df['overall'] = score_df['multiplier']/score_df['multiplier'].sum()
     # loop through city predictor calculations
     fields_found = score_df['name'].unique().tolist()
-    fields_found.insert(0,'city')
+    fields_found.insert(0, 'city')
     raw_df = arcgis_table_to_dataframe(scores_table, fields_found)
     
     # loop through city predictor calculations / Score Tree
@@ -71,13 +67,9 @@ try:
                 for index, r2 in indicator_subset.iterrows():
                     cur_score = raw_df.loc[raw_df['city'] == r[0], r2['name']].iloc[0]
                     a1 = indicator_subset['overall'].sum()
-                    #a2 = r2["multiplier"]#r2['multiplier']
-                    #a3 = a1*a2
                     a4 = cur_score * 1
-                    #testval = r2['overall']
                     cum_sum += a4
-                #division = cum_sum/0.034#/indicator_subset['overall'].mean()
-                r[1] = cum_sum/0.02#cur_score#b#cum_sum/mean_weight
+                r[1] = cum_sum
                 cursor.updateRow(r)
 
     # export data to desktop for Calculation QA
