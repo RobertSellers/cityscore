@@ -1,6 +1,10 @@
 import arcpy, sys, string, os
 import pandas as pd
+# import numpy as np
 
+# def NormalizeData(data):
+#     return (data - np.min(data)) / (np.max(data) - np.min(data))
+    
 def arcgis_table_to_dataframe(in_fc, input_fields, query="", skip_nulls=False, null_values=None):
     """Function will convert an arcgis table into a pandas dataframe with an object ID index, and the selected
     input fields. Uses TableToNumPyArray to get initial data."""
@@ -47,7 +51,12 @@ try:
     score_df = score_df.set_index('indicator').join(score_df_counts.set_index('indicator'), rsuffix='_b').reset_index()
     multiplier = {"Low":.5, "Normal":1, "High":1.5, "Critical":2}
     score_df["multiplier"] = score_df["importance"].map(multiplier)
-    score_df['overall'] = score_df['multiplier']/score_df['multiplier'].sum()
+    score_df['prptn_indiv'] = score_df['multiplier']/score_df['multiplier'].sum()
+    score_df['prprtn_indicator'] = score_df.groupby(['multiplier','indicator'])['prptn_indiv'].transform(lambda x: x.sum())
+    score_df['prprtn_dimension'] = score_df['prprtn_indicator'].groupby(score_df['dimension']).transform(lambda x:  x/x.sum())
+    del score_df['dimension_b']
+    score_df = score_df[['name','dimension', 'indicator','importance','prptn_indiv','prprtn_indicator','prprtn_dimension','count','multiplier']]
+    score_df = score_df.sort_values(by=['dimension', 'indicator'])
     # loop through city predictor calculations
     fields_found = score_df['name'].unique().tolist()
     fields_found.insert(0, 'city')
@@ -62,11 +71,11 @@ try:
 
                 agg_indicator = score_df.loc[score_df['name'] == str(row['name']), 'indicator'].iloc[0]
                 indicator_subset = score_df.loc[score_df['indicator'] == agg_indicator]
-                mean_weight = indicator_subset["overall"].mean()
+                #mean_weight = indicator_subset["overall"].mean()
                 cum_sum = 0
                 for index, r2 in indicator_subset.iterrows():
                     cur_score = raw_df.loc[raw_df['city'] == r[0], r2['name']].iloc[0]
-                    a1 = indicator_subset['overall'].sum()
+                    #a1 = indicator_subset['overall'].sum()
                     a4 = cur_score * 1
                     cum_sum += a4
                 r[1] = cum_sum
