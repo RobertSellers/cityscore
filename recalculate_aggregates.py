@@ -1,9 +1,5 @@
 import arcpy, sys, string, os
 import pandas as pd
-# import numpy as np
-
-# def NormalizeData(data):
-#     return (data - np.min(data)) / (np.max(data) - np.min(data))
     
 def arcgis_table_to_dataframe(in_fc, input_fields, query="", skip_nulls=False, null_values=None):
     """Function will convert an arcgis table into a pandas dataframe with an object ID index, and the selected
@@ -49,14 +45,17 @@ try:
 
     score_df_counts = score_df.groupby(["dimension", "indicator"]).dimension.agg('count').to_frame('count').reset_index()
     score_df = score_df.set_index('indicator').join(score_df_counts.set_index('indicator'), rsuffix='_b').reset_index()
-    multiplier = {"Low":.5, "Normal":1, "High":1.5, "Critical":2}
-    score_df["multiplier"] = score_df["importance"].map(multiplier)
+    score_df["importance"] = score_df["importance"].astype(float)
+    score_df["multiplier"] = score_df["importance"]/100#.map(multiplier)
     score_df['prptn_indiv'] = score_df['multiplier']/score_df['multiplier'].sum()
     score_df['prprtn_indicator'] = score_df.groupby(['dimension','indicator'])['prptn_indiv'].transform(lambda x: x.sum())
     score_df['prprtn_dimension'] = score_df['prprtn_indicator'].groupby(score_df['dimension']).transform(lambda x:  x/x.sum())
+
+    # organize
     del score_df['dimension_b']
     score_df = score_df[['name','dimension', 'indicator','importance','prptn_indiv','prprtn_indicator','prprtn_dimension','count','multiplier']]
     score_df = score_df.sort_values(by=['dimension', 'indicator'])
+
     # loop through city predictor calculations
     fields_found = score_df['name'].unique().tolist()
     fields_found.insert(0, 'city')
@@ -74,13 +73,13 @@ try:
                 for index, r2 in indicator_subset.iterrows():
                     cur_score = raw_df.loc[raw_df['city'] == r[0], r2['name']].iloc[0]
                     cur_score_product = cur_score * r2['prptn_indiv']
-                    cum_sum += cur_score_product/r2['prprtn_indicator']
+                    cum_sum += cur_score_product / r2['prprtn_indicator']
                 r[1] = cum_sum
                 cursor.updateRow(r)
 
     # export data to desktop for Calculation QA
-    export_original = raw_df.to_csv(r'C:/Users/rober/Desktop/df_tot.csv', index = None, header=True)
-    export_csv = score_df.to_csv (r'C:/Users/rober/Desktop/df_agg.csv', index = None, header=True)
+    #export_original = raw_df.to_csv(r'df_tot.csv', index = None, header=True)
+    #export_csv = score_df.to_csv (r'df_agg.csv', index = None, header=True)
 
 except Exception, ErrorDesc:
     sErr = "ERROR:\n" + str(ErrorDesc)

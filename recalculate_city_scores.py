@@ -1,4 +1,6 @@
-import arcpy, sys, string, os, random
+import arcpy, sys, string, os
+#import numpy as np
+#from scipy.stats import norm
 
 try:
     arcpy.env.workspace = "in_memory"
@@ -8,8 +10,16 @@ try:
     metric_val = arcpy.GetParameterAsText(3) #this is the field to be updated
     target_val = arcpy.GetParameterAsText(4) #high or low, basic calculation
     scores_table = arcpy.GetParameterAsText(6) #the master data table to be updated
-    function_val = arcpy.GetParameterAsText(7) #the master data table to be updated
+    function_val = arcpy.GetParameterAsText(7) 
     field_data_list = [row[0] for row in arcpy.da.SearchCursor(city_features, metric_val)]
+
+    if importance_val == "Gaussian":
+        pass
+        #data = np.random.normal(loc=5.0, scale=2.0, size=1000)
+        #mean,std=norm.fit(data)
+    else:
+        pass
+
     max_value = str(max(field_data_list))
     min_value = str(min(field_data_list))
     fieldList = [metric_val]
