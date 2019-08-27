@@ -24,6 +24,7 @@ try:
     fields_wdata = []
     fields = dict((f.name, []) for f in arcpy.ListFields(scores_table) if not f.required)
     rows = arcpy.SearchCursor(scores_table,"","","","")
+
     for row in rows:
         for f in fields.keys():
             fields[f].append(row.getValue(f))
@@ -45,8 +46,7 @@ try:
 
     score_df_counts = score_df.groupby(["dimension", "indicator"]).dimension.agg('count').to_frame('count').reset_index()
     score_df = score_df.set_index('indicator').join(score_df_counts.set_index('indicator'), rsuffix='_b').reset_index()
-    score_df["importance"] = score_df["importance"].astype(float)
-    score_df["multiplier"] = score_df["importance"]/100#.map(multiplier)
+    score_df["multiplier"] = score_df["importance"].astype(float)/100
     score_df['prptn_indiv'] = score_df['multiplier']/score_df['multiplier'].sum()
     score_df['prprtn_indicator'] = score_df.groupby(['dimension','indicator'])['prptn_indiv'].transform(lambda x: x.sum())
     score_df['prprtn_dimension'] = score_df['prprtn_indicator'].groupby(score_df['dimension']).transform(lambda x:  x/x.sum())
@@ -68,12 +68,9 @@ try:
             for r in cursor:
                 # gets multiplier from agg master data.  currently need actual city data
                 agg_indicator = score_df.loc[score_df['name'] == str(row['name']), 'indicator'].iloc[0]
-                indicator_subset = score_df.loc[score_df['indicator'] == agg_indicator]
                 cum_sum = 0
-                for index, r2 in indicator_subset.iterrows():
-                    cur_score = raw_df.loc[raw_df['city'] == r[0], r2['name']].iloc[0]
-                    cur_score_product = cur_score * r2['prptn_indiv']
-                    cum_sum += cur_score_product / r2['prprtn_indicator']
+                for index, r2 in score_df.loc[score_df['indicator'] == agg_indicator].iterrows():
+                    cum_sum += (raw_df.loc[raw_df['city'] == r[0], r2['name']].iloc[0] * r2['prptn_indiv']) / r2['prprtn_indicator']
                 r[1] = cum_sum
                 cursor.updateRow(r)
 

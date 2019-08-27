@@ -1,6 +1,6 @@
 import arcpy, sys, string, os
-#import numpy as np
-#from scipy.stats import norm
+import numpy as np
+from scipy.stats import norm
 
 try:
     arcpy.env.workspace = "in_memory"
