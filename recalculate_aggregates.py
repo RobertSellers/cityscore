@@ -42,41 +42,54 @@ try:
     tree_query = "name IN (" + "' - '".replace('-', ",".join('"{}"'.format(i) for i in fields_wdata)) + ")"
     tree_query = tree_query.replace('"', '').replace("' ", "'").replace(" '", "'").replace(",","','")
     fields_subset = ['name', 'dimension', 'indicator', 'importance']
-    score_df = arcgis_table_to_dataframe(score_tree, fields_subset, query = tree_query)
+    df_agg = arcgis_table_to_dataframe(score_tree, fields_subset, query = tree_query)
 
-    score_df_counts = score_df.groupby(["dimension", "indicator"]).dimension.agg('count').to_frame('count').reset_index()
-    score_df = score_df.set_index('indicator').join(score_df_counts.set_index('indicator'), rsuffix='_b').reset_index()
-    score_df["multiplier"] = score_df["importance"].astype(float)/100
-    score_df['prptn_indiv'] = score_df['multiplier']/score_df['multiplier'].sum()
-    score_df['prprtn_indicator'] = score_df.groupby(['dimension','indicator'])['prptn_indiv'].transform(lambda x: x.sum())
-    score_df['prprtn_dimension'] = score_df['prprtn_indicator'].groupby(score_df['dimension']).transform(lambda x:  x/x.sum())
+    df_agg_counts = df_agg.groupby(["dimension", "indicator"]).dimension.agg('count').to_frame('count').reset_index()
+    df_agg = df_agg.set_index('indicator').join(df_agg_counts.set_index('indicator'), rsuffix='_b').reset_index()
+    df_agg["multiplier"] = df_agg["importance"].astype(float)/100
+    df_agg['prptn_indiv'] = df_agg['multiplier']/df_agg['multiplier'].sum()
+    df_agg['prprtn_indicator'] = df_agg.groupby(['dimension','indicator'])['prptn_indiv'].transform(lambda x: x.sum())
+    df_agg['prprtn_dimension'] = df_agg['prprtn_indicator'].groupby(df_agg['dimension']).transform(lambda x:  x/x.sum())
 
     # organize
-    del score_df['dimension_b']
-    score_df = score_df[['name','dimension', 'indicator','importance','prptn_indiv','prprtn_indicator','prprtn_dimension','count','multiplier']]
-    score_df = score_df.sort_values(by=['dimension', 'indicator'])
+    del df_agg['dimension_b']
+    df_agg = df_agg[['name','dimension', 'indicator','importance','prptn_indiv','prprtn_indicator','prprtn_dimension','count','multiplier']]
+    df_agg = df_agg.sort_values(by=['dimension', 'indicator'])
 
     # loop through city predictor calculations
-    fields_found = score_df['name'].unique().tolist()
+    fields_found = df_agg['name'].unique().tolist()
     fields_found.insert(0, 'city')
     raw_df = arcgis_table_to_dataframe(scores_table, fields_found)
-    
     # loop through city predictor calculations / Score Tree
-    for index, row in score_df.iterrows():
+    for index, row in df_agg.iterrows():
         # loop / use cursor on existing aggregate feature class
-        with arcpy.da.UpdateCursor(agg_feature,['city',str(row['indicator'])]) as cursor:
+        with arcpy.da.UpdateCursor(agg_feature,['city',str(row['indicator']),str(row['dimension']), 'composite']) as cursor:
             for r in cursor:
-                # gets multiplier from agg master data.  currently need actual city data
-                agg_indicator = score_df.loc[score_df['name'] == str(row['name']), 'indicator'].iloc[0]
+                # update each indicator field (level 3)
+                agg_indicator = df_agg.loc[df_agg['name'] == str(row['name']), 'indicator'].iloc[0]
                 cum_sum = 0
-                for index, r2 in score_df.loc[score_df['indicator'] == agg_indicator].iterrows():
-                    cum_sum += (raw_df.loc[raw_df['city'] == r[0], r2['name']].iloc[0] * r2['prptn_indiv']) / r2['prprtn_indicator']
+                for index, r2 in df_agg.loc[df_agg['indicator'] == agg_indicator].iterrows():
+                    raw_data_score = raw_df.loc[raw_df['city'] == r[0], r2['name']].iloc[0]
+                    cum_sum += (raw_data_score * r2['prptn_indiv']) / r2['prprtn_indicator']
                 r[1] = cum_sum
+                # update each dimension field (level 2)
+                agg_dimension = df_agg.loc[df_agg['name'] == str(row['name']), 'dimension'].iloc[0]
+                cum_sum = 0
+                for index, r2 in df_agg.loc[df_agg['dimension'] == agg_dimension].iterrows():
+                    raw_data_score = raw_df.loc[raw_df['city'] == r[0], r2['name']].iloc[0]
+                    cum_sum += (raw_data_score * r2['prprtn_dimension'])
+                r[2] = cum_sum
+                # update composite field (level 1)
+                composite = 0
+                for index, r3 in df_agg.iterrows():
+                    raw_data_score = raw_df.loc[raw_df['city'] == r[0], r2['name']].iloc[0]
+                    composite += (raw_data_score * r2['prptn_indiv'])
+                r[3] = composite
                 cursor.updateRow(r)
 
     # export data to desktop for Calculation QA
-    #export_original = raw_df.to_csv(r'df_tot.csv', index = None, header=True)
-    #export_csv = score_df.to_csv (r'df_agg.csv', index = None, header=True)
+    export_original = raw_df.to_csv(r'C:/Users/rober/Desktop/df_tot.csv', index = None, header=True)
+    export_csv = df_agg.to_csv (r'C:/Users/rober/Desktop/df_agg.csv', index = None, header=True)
 
 except Exception, ErrorDesc:
     sErr = "ERROR:\n" + str(ErrorDesc)
