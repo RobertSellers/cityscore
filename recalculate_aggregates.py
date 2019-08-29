@@ -45,7 +45,7 @@ try:
     tree_query = "name IN (" + "' - '".replace('-', ",".join('"{}"'.format(i) for i in fields_wdata)) + ")"
     tree_query = tree_query.replace('"', '').replace("' ", "'").replace(" '", "'").replace(",","','")
     fields_subset = ['name', 'dimension', 'indicator', 'importance']
-    
+
     df_agg = arcgis_table_to_dataframe(score_tree, fields_subset, query = tree_query)
     df_agg_counts = df_agg.groupby(["dimension", "indicator"]).dimension.agg('count').to_frame('count').reset_index()
     df_agg = df_agg.set_index('indicator').join(df_agg_counts.set_index('indicator'), rsuffix='_b').reset_index()
@@ -108,8 +108,8 @@ try:
 
     # export data to desktop for Calculation QA
     #export_original = raw_df.to_csv(r'C:/Users/rober/Desktop/df_tot.csv', index = None, header=True)
-    export_csv = df_agg.to_csv (r'C:/Users/rober/Desktop/df_agg.csv', index = None, header=True)
-    export_csv2 = agg_calc_cols.to_csv (r'C:/Users/rober/Desktop/agg_calc_cols.csv', index = None, header=True)
+    #export_csv = df_agg.to_csv (r'C:/Users/rober/Desktop/df_agg.csv', index = None, header=True)
+    #export_csv2 = agg_calc_cols.to_csv (r'C:/Users/rober/Desktop/agg_calc_cols.csv', index = None, header=True)
 except Exception, ErrorDesc:
     sErr = "ERROR:\n" + str(ErrorDesc)
     arcpy.AddError(sErr)
