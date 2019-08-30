@@ -48,7 +48,7 @@ def fc_to_panda_agg_calc(scores_fc, score_tree, optOut, output = False):
     df_agg = df_agg[['name','dimension', 'indicator','importance','prptn_indiv','prprtn_indicator','prprtn_dimension','count','multiplier']]
     df_agg = df_agg.sort_values(by=['dimension', 'indicator'])
     if output:
-        fn = os.path.join(optOut, 'df_agg.csv')
+        fn = os.path.join(optOut, 'debug_fc_to_panda_agg_calc.csv')
         export = df_agg.to_csv(fn, index = None, header=True)
     return df_agg
 
@@ -115,11 +115,6 @@ try:
     # Parent level 2
     add_dimension_and_composite_levels(df_agg, agg_feature, lvl2List, optOut)
 
-
-    # export data to desktop for Calculation QA
-    #export_original = raw_df.to_csv(r'C:/Users/rober/Desktop/df_tot.csv', index = None, header=True)
-    #export_csv = df_agg.to_csv (r'C:/Users/rober/Desktop/df_agg.csv', index = None, header=True)
-    #export_csv2 = agg_calc_cols.to_csv (r'C:/Users/rober/Desktop/agg_calc_cols.csv', index = None, header=True)
 except Exception, ErrorDesc:
     sErr = "ERROR:\n" + str(ErrorDesc)
     arcpy.AddError(sErr)
