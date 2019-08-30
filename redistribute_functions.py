@@ -1,5 +1,6 @@
 import arcpy, sys, string, os
 import numpy as np
+from numpy import inf
 # from scipy.stats import norm,rayleigh
 # from scipy.optimize import curve_fit
 # from numpy import linspace
@@ -27,7 +28,10 @@ try:
         i = 0
         with arcpy.da.UpdateCursor(city_features, metric_val) as cursor:
             for row in cursor:
-                row[0] = log_arr[0] + log_arr[1]* np.log(row[0])
+                precheck = log_arr[0] + log_arr[1]* np.log(row[0])
+                if precheck == float('-inf'):
+                    precheck = 0
+                row[0] = precheck
                 cursor.updateRow(row)
                 i += 1
 
